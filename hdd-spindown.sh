@@ -8,8 +8,15 @@
 # Released under the terms of the MIT License, see 'LICENSE'
 
 
+readonly VERSION="2.0.0"
+
 # default configuration file
 readonly CONFIG="${CONFIG:-/etc/hdd-spindown.rc}"
+
+if [ "$1" == "version" ]; then
+	echo "hdd-spindown.sh $VERSION"
+	exit 0
+fi
 
 # per-device state keyed by kernel device name
 declare -A SEACHEST DOWNSTAMP
@@ -269,7 +276,7 @@ if [ "$1" == "status" ]; then
 fi
 
 USER_PRESENT=0
-log "Using ${CONF_INT}s interval"
+log "hdd-spindown.sh $VERSION, using ${CONF_INT}s interval"
 
 while true; do
 	update_presence

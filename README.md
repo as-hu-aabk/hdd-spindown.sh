@@ -2,6 +2,8 @@
 
 Automatic Disk Standby using Kernel diskstats and hdparm
 
+Version 2.0.0 (`hdd-spindown.sh version`)
+
 
 ## Summary
 

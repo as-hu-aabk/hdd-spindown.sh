@@ -14,6 +14,7 @@ The upstream author no longer has rotating disks and cannot test changes (see RE
 - Install: `make install` (supports `DESTDIR`, default `/`, and `PREFIX`, default `/usr`). This installs the script to `$PREFIX/bin`, the rc file to `/etc` (only if none exists), and the unit to `$PREFIX/lib/systemd/system`.
 - Run against a local config: `CONFIG=./my.rc ./hdd-spindown.sh`. `CONFIG` overrides the default `/etc/hdd-spindown.rc`. The script loops forever and needs root for smartctl, hdparm and raw `dd` reads.
 - Show power state of configured drives and exit: `hdd-spindown.sh status` (honours `CONFIG`). It shares `init_dev` (name resolution and openSeaChest selection) with the main loop's `check_dev`, and silences `log` via `QUIET`. Physical disks not in `CONF_DEV` are listed afterwards (SSDs detected via `/sys/block/<dev>/queue/rotational`).
+- Version: `VERSION` at the top of `hdd-spindown.sh`, printed by `hdd-spindown.sh version` (works without a config) and logged at startup. When bumping it, also update the README line and add a `vX.Y.Z` git tag.
 - Syntax check: `bash -n hdd-spindown.sh`. `shellcheck hdd-spindown.sh` works if it is installed.
 - There is no test suite, and there is no lint config.
 
