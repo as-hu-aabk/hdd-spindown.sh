@@ -21,5 +21,11 @@
 # Force SATA device type
 #CONF_FORCE_SATA=0
 
+# Use openSeaChest_PowerControl for power state and spindown
+# 	auto: Seagate drives only (model 'ST...'), if installed; 1: all drives; 0: never
+#CONF_SEACHEST=auto
+
+# Show the power state of the drives above: 'hdd-spindown.sh status'
+
 
 # vim: ts=4

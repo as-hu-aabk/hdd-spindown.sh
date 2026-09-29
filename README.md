@@ -12,12 +12,27 @@ standby for drives that do not support timeout-based spindown by firmware
 
 ## Usage, Requirements
 
+The quickest way to set it up is the setup script, run as root:
+
+    # ./setup.sh
+
+It installs the script and service unit, generates `/etc/hdd-spindown.rc`
+with all rotating disks found (SSDs are skipped, an existing configuration is
+kept), and enables and starts the service. `./setup.sh -n` only prints the
+configuration it would generate; `TIMEOUT=3600 ./setup.sh` changes the idle
+timeout of generated entries (default 1800 seconds).
+
 **hdd-spindown.sh** is best run via systemd, using the service unit provided.
 In order to enable it, simply issue
 
     $ systemctl enable hdd-spindown.service
 
 and adapt configuration file `/etc/hdd-spindown.rc` to suit your needs.
+
+To print the current power state of all configured drives without waking
+them up, run
+
+    $ hdd-spindown.sh status
 
 Apart from *coreutils* the following is required:
  * **smartctl:** for detection of drive status and SMART self-checks
@@ -27,6 +42,9 @@ Apart from *coreutils* the following is required:
 The following is optional, depending on the features used:
  * **logger** if syslog interface enabled
  * **ping** if host monitoring enabled
+ * **openSeaChest_PowerControl** for Seagate drives using EPC power states,
+   which `hdparm` and `smartctl` do not report reliably (used automatically
+   when installed, see `CONF_SEACHEST`)
 
 
 ## Configuration
