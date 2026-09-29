@@ -2,7 +2,7 @@
 
 Automatic Disk Standby using Kernel diskstats, hdparm and openSeaChest
 
-Version 2.0.0 (`hdd-spindown.sh version`)
+Version 2.0.1 (`hdd-spindown.sh version`)
 
 
 ## Summary

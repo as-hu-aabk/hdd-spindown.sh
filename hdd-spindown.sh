@@ -8,7 +8,7 @@
 # Released under the terms of the MIT License, see 'LICENSE'
 
 
-readonly VERSION="2.0.0"
+readonly VERSION="2.0.1"
 
 # default configuration file
 readonly CONFIG="${CONFIG:-/etc/hdd-spindown.rc}"
