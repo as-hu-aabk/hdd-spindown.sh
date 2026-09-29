@@ -40,4 +40,5 @@ The upstream author no longer has rotating disks and cannot test changes (see RE
   - Wake reporting: `DOWNSTAMP[$DEV]` records each successful spindown. When a drive that was spun down is found running again, `check_dev` logs the elapsed time and whether I/O counters changed.
 - **Presence feature**: if `CONF_HOSTS` is set and any host in it answers a ping, the user counts as present. While the user is present, spindown is suppressed and drives that are down get spun up with a direct-I/O `dd` read of `CONF_READLEN` MiB.
 - **Logging**: `log` sends messages to syslog (`logger -t hdd-spindown.sh`) when `CONF_SYSLOG=1`, and to stdout otherwise, which journald captures under systemd.
+- **smartd interaction**: smartd without `-n standby` in `/etc/smartd.conf` wakes standby disks on every poll (shows up as `woke up ... (I/O: no)`); documented in the README's smartd section.
 - **Dependencies** are checked at startup by `check_req`. When one is added or removed, update the README requirements list as well (see 919c9e4).

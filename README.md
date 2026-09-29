@@ -109,6 +109,38 @@ tells whether the wakeup was caused by I/O (some process accessing the disk)
 or not (drive firmware or passthrough commands).
 
 
+## smartd
+
+`smartd` (from *smartmontools*) polls every disk periodically. Without the
+`-n standby` directive each poll wakes up disks that are in standby, undoing
+the work of **hdd-spindown.sh**. Since these are passthrough commands, the
+wakeup is logged as `(I/O: no)`.
+
+Add `-n standby` to the `DEVICESCAN` (or per-device) line of
+`/etc/smartd.conf`, e.g.
+
+    DEVICESCAN -a -o on -S on -n standby,12,q
+
+`standby` skips the check while a disk is in standby, `12` forces a check
+after 12 skipped ones anyway (with a 2 hour check interval: once a day) and
+`q` suppresses the log message for each skipped check. Then restart smartd:
+
+    # systemctl restart smartd
+
+Notes:
+
+ * Options of the `smartd` command itself, such as `-q` or `-i <interval>`,
+   are not valid in `smartd.conf`. Using them there makes smartd report
+   *fatal syntax errors* and monitor no disks at all (check with
+   `journalctl -u smartd`; it should say *Monitoring N ATA/SATA ... devices*).
+   The check interval is set on the command line, e.g. via
+   `SMARTD_CHECK_INTERVAL` in `/etc/sysconfig/smartmontools` on openSUSE.
+ * `-n standby` does not apply to the first check when smartd starts, so
+   starting or restarting smartd wakes up all disks once.
+ * Scheduled self-tests (`-s`) spin up the disks as well, and
+   **hdd-spindown.sh** does not spin a disk down while a self-test runs.
+
+
 ## State of Development
 
 I have replaced all of my rotating disks with flash based storage. I will
@@ -124,3 +156,6 @@ Seagate Exos ST22000NM000C and ST16000NM000J drives alongside a WD Red.
 
 This software is released under the terms of the MIT License, see file
 *LICENSE*.
+
+Authors: Alexander Koch (original author, 2011-2021),
+Attila Bartok (Seagate/openSeaChest support and fork maintenance, 2026).
