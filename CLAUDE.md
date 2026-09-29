@@ -10,7 +10,7 @@ The upstream author no longer has rotating disks and cannot test changes (see RE
 
 ## Commands
 
-- Automatic setup: `./setup.sh` (root). Installs script and unit, generates `/etc/hdd-spindown.rc` from the rotating disks in `/sys/block` using by-id names (SSDs skipped, existing config kept), then enables and restarts the service. `./setup.sh -n` prints the generated config only; `TIMEOUT` sets the idle timeout (default 1800).
+- Automatic setup: `./setup.sh` (root). Installs script and unit, generates `/etc/hdd-spindown.rc` from the rotating disks in `/sys/block` using by-id names (SSDs skipped, existing config kept), then enables and restarts the service and warns about smartd settings that wake disks (`check_smartd`). `./setup.sh -n` prints the generated config only; `TIMEOUT` sets the idle timeout (default 1800).
 - Install: `make install` (supports `DESTDIR`, default `/`, and `PREFIX`, default `/usr`). This installs the script to `$PREFIX/bin`, the rc file to `/etc` (only if none exists), and the unit to `$PREFIX/lib/systemd/system`.
 - Run against a local config: `CONFIG=./my.rc ./hdd-spindown.sh`. `CONFIG` overrides the default `/etc/hdd-spindown.rc`. The script loops forever and needs root for smartctl, hdparm and raw `dd` reads.
 - Show power state of configured drives and exit: `hdd-spindown.sh status` (honours `CONFIG`). It shares `init_dev` (name resolution and openSeaChest selection) with the main loop's `check_dev`, and silences `log` via `QUIET`. Physical disks not in `CONF_DEV` are listed afterwards (SSDs detected via `/sys/block/<dev>/queue/rotational`).

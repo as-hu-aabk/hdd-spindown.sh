@@ -4,6 +4,8 @@ Description=Automatic Disk Standby
 [Service]
 Type=simple
 ExecStart=/usr/bin/hdd-spindown.sh
+Restart=on-failure
+RestartSec=30
 
 [Install]
 WantedBy=multi-user.target

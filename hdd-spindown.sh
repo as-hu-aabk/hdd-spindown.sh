@@ -21,7 +21,7 @@
 #   smartctl/hdparm for all others. None of the state queries wake up a disk.
 
 
-readonly VERSION="2.0.1"
+readonly VERSION="2.0.2"
 
 # default configuration file, may be overridden via environment
 readonly CONFIG="${CONFIG:-/etc/hdd-spindown.rc}"

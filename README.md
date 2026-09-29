@@ -2,7 +2,12 @@
 
 Automatic Disk Standby using Kernel diskstats, hdparm and openSeaChest
 
-Version 2.0.1 (`hdd-spindown.sh version`)
+Version 2.0.2 (`hdd-spindown.sh version`)
+
+This is a maintained fork of the archived
+[lynix/hdd-spindown.sh](https://github.com/lynix/hdd-spindown.sh), adding
+support for Seagate drives via openSeaChest:
+<https://github.com/as-hu-aabk/hdd-spindown.sh>
 
 
 ## Summary
@@ -23,7 +28,8 @@ The quickest way to set it up is the setup script, run as root:
 
 It installs the script and service unit, generates `/etc/hdd-spindown.rc`
 with all rotating disks found (SSDs are skipped, an existing configuration is
-kept), and enables and starts the service. `./setup.sh -n` only prints the
+kept), enables and starts the service, and warns about smartd settings that
+would wake up disks (see *smartd* below). `./setup.sh -n` only prints the
 configuration it would generate; `TIMEOUT=3600 ./setup.sh` changes the idle
 timeout of generated entries (default 1800 seconds).
 
@@ -92,6 +98,16 @@ installed, **hdd-spindown.sh** uses it for these drives:
    (PM0/PM1 = spinning, PM2 = standby)
  * spindown: `openSeaChest_PowerControl --transitionPower standby`
    (EPC *Standby_Z*), falling back to `--spinDown` if unsupported
+
+To install openSeaChest, download a package or archive for your system from
+the [openSeaChest releases](https://github.com/Seagate/openSeaChest/releases)
+page, e.g. the RPM on openSUSE:
+
+    # zypper install ./openseachest-<version>.x86_64.rpm
+
+and check that `openSeaChest_PowerControl --version` works. Only
+`openSeaChest_PowerControl` is used. `hdd-spindown.sh status` then shows
+`openSeaChest` for the Seagate drives (restart the service after installing).
 
 This is controlled by the option `CONF_SEACHEST`:
 

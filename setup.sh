@@ -95,6 +95,31 @@ CONF_SEACHEST=auto
 EOF
 }
 
+# check_smartd
+# Warn about smartd settings that interfere with disk standby: monitored
+# disks without '-n standby' are woken up on every poll, and a config with
+# syntax errors leaves smartd running without monitoring any disk.
+function check_smartd() {
+	local CONF=/etc/smartd.conf
+	systemctl is-active --quiet smartd.service || return 0
+	[ -r "$CONF" ] || return 0
+
+	# device lines (DEVICESCAN or /dev/...) without the '-n' directive
+	if grep -E '^[[:space:]]*(DEVICESCAN|/dev/)' "$CONF" | grep -qvE '(^|[[:space:]])-n[[:space:]]'; then
+		echo "warning: $CONF has device lines without '-n standby', smartd will"
+		echo "         wake up disks in standby; see README section 'smartd'"
+	fi
+
+	# log of the currently running smartd instance only
+	local ID
+	ID="$(systemctl show smartd.service -p InvocationID --value)"
+	if [ -n "$ID" ] && journalctl -o cat _SYSTEMD_INVOCATION_ID="$ID" 2>/dev/null | \
+			grep -q 'fatal syntax errors'; then
+		echo "warning: smartd reports syntax errors in $CONF and monitors no"
+		echo "         disks, see 'journalctl -u smartd'"
+	fi
+}
+
 
 # dry run: show the configuration only, needs no root privileges
 if [ "$1" == "-n" ]; then
@@ -143,5 +168,6 @@ systemctl is-active --quiet hdd-spindown.service || {
 }
 echo "service running"
 echo
+check_smartd
 # show the result
 "$PREFIX/bin/hdd-spindown.sh" status
