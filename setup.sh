@@ -16,7 +16,8 @@
 readonly TIMEOUT="${TIMEOUT:-1800}"
 readonly PREFIX="${PREFIX:-/usr}"
 readonly CONFIG="/etc/hdd-spindown.rc"
-readonly SRC="$(dirname "$(readlink -f "$0")")"
+SRC="$(dirname "$(readlink -f "$0")")"
+readonly SRC
 
 
 function disk_id() {
@@ -37,7 +38,7 @@ function gen_config() {
 	for B in /sys/block/*; do
 		DEV="$(basename "$B")"
 		[ -e "$B/device" ] || continue
-		MODEL="$(cat "$B/device/model" 2>/dev/null | sed 's/ *$//')"
+		MODEL="$(sed 's/ *$//' "$B/device/model" 2>/dev/null)"
 		if [ "$(cat "$B/queue/rotational")" == "0" ]; then
 			echo "#   skipped $DEV ($MODEL): SSD, no spindown needed"
 			continue
@@ -49,9 +50,9 @@ function gen_config() {
 	else
 		echo -n "CONF_DEV=( "
 		for I in "${!DEVS[@]}"; do
-			[ $I -gt 0 ] && echo -n "           "
+			[ "$I" -gt 0 ] && echo -n "           "
 			echo -n "'${DEVS[$I]}'"
-			[ $I -lt $((${#DEVS[@]} - 1)) ] && echo " \\"
+			[ "$I" -lt $((${#DEVS[@]} - 1)) ] && echo " \\"
 		done
 		echo " )"
 	fi

@@ -20,12 +20,14 @@ fi
 
 # per-device state keyed by kernel device name
 declare -A SEACHEST DOWNSTAMP
+# devices already reported as missing or skipped, keyed by config name
+declare -A REPORTED
 
 
 function check_req() {
 	FAIL=0
-	for CMD in $@; do
-		which $CMD &>/dev/null && continue
+	for CMD in "$@"; do
+		which "$CMD" &>/dev/null && continue
 		echo "error: missing '$CMD' executable in PATH" >&2
 		FAIL=1
 	done
@@ -34,7 +36,7 @@ function check_req() {
 
 function log() {
 	[ -n "$QUIET" ] && return 0
-	if [ $CONF_SYSLOG -eq 1 ]; then
+	if [ "$CONF_SYSLOG" -eq 1 ]; then
 		logger -t "hdd-spindown.sh" --id=$$ "$1"
 	else
 		echo "$1"
@@ -47,7 +49,7 @@ function selftest_active() {
 }
 
 function dev_stats() {
-	read R_IO R_M R_S R_T W_IO REST < "/sys/block/$1/stat"
+	read -r R_IO _ _ _ W_IO _ < "/sys/block/$1/stat"
 	echo "$R_IO $W_IO"
 }
 
@@ -104,7 +106,7 @@ function dev_spinup() {
 	# read raw blocks, bypassing cache
 	log "spinning up $1"
 	unset "DOWNSTAMP[$1]"
-	dd if=/dev/$1 of=/dev/null bs=1M count=$CONF_READLEN iflag=direct &>/dev/null
+	dd if="/dev/$1" of=/dev/null bs=1M count="$CONF_READLEN" iflag=direct &>/dev/null
 }
 
 function update_presence() {
@@ -132,17 +134,31 @@ function update_presence() {
 }
 
 function init_dev() {
-	# initialize real device name
+	# initialize real device name, re-resolving the configured name if the
+	# device vanished (e.g. disk re-attached under a different node)
 	DEV="${DEVICES[$1]}"
 	if ! [ -e "/dev/$DEV" ]; then
-		if [ -L "/dev/disk/by-id/$DEV" ]; then
-			DEV="$(basename "$(readlink "/dev/disk/by-id/$DEV")")"
-			log "recognized disk: ${DEVICES[$1]} --> $DEV"
+		NAME="${DEVNAMES[$1]}"
+		if [ -L "/dev/disk/by-id/$NAME" ]; then
+			DEV="$(basename "$(readlink "/dev/disk/by-id/$NAME")")"
+			log "recognized disk: $NAME --> $DEV"
+			DEVICES[$1]="$DEV"
+		elif [ -e "/dev/$NAME" ]; then
+			DEV="$NAME"
 			DEVICES[$1]="$DEV"
 		else
-			log "skipping missing device '$DEV'" >&2
+			[ -z "${REPORTED[$NAME]}" ] && log "skipping missing device '$NAME'"
+			REPORTED[$NAME]=missing
 			return 1
 		fi
+		unset "REPORTED[$NAME]"
+	fi
+
+	# SSDs need no spindown
+	if [ "$(cat "/sys/block/$DEV/queue/rotational" 2>/dev/null)" == "0" ]; then
+		[ -z "${REPORTED[$DEV]}" ] && log "skipping $DEV: SSD, no spindown needed"
+		REPORTED[$DEV]=ssd
+		return 2
 	fi
 
 	# select openSeaChest for Seagate drives
@@ -184,7 +200,7 @@ function check_dev() {
 		# skip spindown if user present
 		if [ $USER_PRESENT -eq 0 ]; then
 			# check against idle timeout
-			if [ $(($(date +%s) - ${STAMP[$1]})) -ge ${TIMEOUT[$1]} ]; then
+			if [ $(($(date +%s) - ${STAMP[$1]})) -ge "${TIMEOUT[$1]}" ]; then
 				# spindown disk
 				dev_spindown "$DEV"
 			fi
@@ -202,7 +218,8 @@ if ! [ -r "$CONFIG" ]; then
 	echo "error: unable to read config file '$CONFIG', aborting." >&2
 	exit 1
 else
-    source "$CONFIG"
+	# shellcheck source=hdd-spindown.rc
+	source "$CONFIG"
 fi
 
 # default watch interval: 300s
@@ -219,14 +236,14 @@ readonly CONF_SEACHEST=${CONF_SEACHEST:-auto}
 # check prerequisites
 check_req date hdparm smartctl dd cut grep
 [ -n "$CONF_HOSTS" ] && check_req ping
-[ $CONF_SYSLOG -eq 1 ] && check_req logger
+[ "$CONF_SYSLOG" -eq 1 ] && check_req logger
 [ "$CONF_SEACHEST" == "1" ] && check_req openSeaChest_PowerControl
 HAVE_SEACHEST=0
 which openSeaChest_PowerControl &>/dev/null && HAVE_SEACHEST=1
 readonly SEACHEST_CMD="openSeaChest_PowerControl --noBanner"
 
 # pre-set smartctl call
-[ $CONF_FORCE_SATA -eq 1 ] && SMARTCTL=" -d sat"
+[ "$CONF_FORCE_SATA" -eq 1 ] && SMARTCTL=" -d sat"
 readonly SMARTCTL="smartctl${SMARTCTL}"
 
 # refuse to work without disks defined
@@ -239,6 +256,7 @@ fi
 DEV_MAX=$((${#CONF_DEV[@]} - 1))
 for I in $(seq 0 $DEV_MAX); do
 	DEVICES[$I]="$(echo "${CONF_DEV[$I]}" | cut -d '|' -f 1)"
+	DEVNAMES[$I]="${DEVICES[$I]}"
 	TIMEOUT[$I]="$(echo "${CONF_DEV[$I]}" | cut -d '|' -f 2)"
 done
 
@@ -247,11 +265,12 @@ if [ "$1" == "status" ]; then
 	QUIET=1
 	{
 	for I in $(seq 0 $DEV_MAX); do
-		NAME="${DEVICES[$I]}"
-		if ! init_dev $I; then
-			echo "$NAME: missing"
-			continue
-		fi
+		NAME="${DEVNAMES[$I]}"
+		init_dev "$I"
+		case $? in
+			1) echo "$NAME: missing"; continue ;;
+			2) echo "$DEV ($NAME, SSD): not monitored, no spindown needed"; continue ;;
+		esac
 		TOOL=smartctl
 		[ "${SEACHEST[$DEV]}" == "1" ] && TOOL=openSeaChest
 		if dev_isup "$DEV"; then STATE="active/idle"; else STATE="standby"; fi
@@ -282,8 +301,8 @@ while true; do
 	update_presence
 
 	for I in $(seq 0 $DEV_MAX); do
-		check_dev $I
+		check_dev "$I"
 	done
 
-	sleep $CONF_INT
+	sleep "$CONF_INT"
 done

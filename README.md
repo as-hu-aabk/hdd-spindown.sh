@@ -1,6 +1,6 @@
 # hdd-spindown.sh
 
-Automatic Disk Standby using Kernel diskstats and hdparm
+Automatic Disk Standby using Kernel diskstats, hdparm and openSeaChest
 
 Version 2.0.0 (`hdd-spindown.sh version`)
 
@@ -10,6 +10,9 @@ Version 2.0.0 (`hdd-spindown.sh version`)
 **hdd-spindown.sh** is a rather simple Bash script that enables automatic disk
 standby for drives that do not support timeout-based spindown by firmware
 (e.g. `-S` parameter for `hdparm`).
+
+Seagate drives with Extended Power Conditions (EPC), such as the Exos series,
+are supported via Seagate's `openSeaChest` tools, see *Seagate Drives* below.
 
 
 ## Usage, Requirements
@@ -74,11 +77,47 @@ default interval of 5 minutes.
 For a complete list of options please see the example `hdd-spindown.rc`.
 
 
+## Seagate Drives
+
+Many Seagate drives (e.g. Exos X16/X22) implement Extended Power Conditions
+(EPC). Their idle states such as *Idle_A* or *Idle_B* are reported by
+`hdparm -C` as `unknown`, so power state detection and spindown via
+`hdparm`/`smartctl` are unreliable for them.
+
+If `openSeaChest_PowerControl` (from Seagate's
+[openSeaChest](https://github.com/Seagate/openSeaChest) utilities) is
+installed, **hdd-spindown.sh** uses it for these drives:
+
+ * power state: `openSeaChest_PowerControl --checkPowerMode`
+   (PM0/PM1 = spinning, PM2 = standby)
+ * spindown: `openSeaChest_PowerControl --transitionPower standby`
+   (EPC *Standby_Z*), falling back to `--spinDown` if unsupported
+
+This is controlled by the option `CONF_SEACHEST`:
+
+ * `auto` (default): use openSeaChest for drives whose model starts with `ST`,
+   if the tool is installed; other drives keep using `smartctl`/`hdparm`
+ * `1`: use openSeaChest for all drives (the tool becomes mandatory)
+ * `0`: never use openSeaChest
+
+`hdd-spindown.sh status` shows which tool is used for each drive. When a drive
+wakes up again after spindown, a log line like
+
+    sdc woke up within 300s of spindown (I/O: yes)
+
+tells whether the wakeup was caused by I/O (some process accessing the disk)
+or not (drive firmware or passthrough commands).
+
+
 ## State of Development
 
 I have replaced all of my rotating disks with flash based storage. I will
 happily accept pull requests for improvements or bug fixes, but I will not be
 able to test anything myself.
+
+This fork (version 2.0.0) adds Seagate/openSeaChest support, the `status`
+command, `setup.sh` and wakeup logging. It was developed on a system with
+Seagate Exos ST22000NM000C and ST16000NM000J drives alongside a WD Red.
 
 
 ## License
